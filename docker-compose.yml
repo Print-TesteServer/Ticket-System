@@ -1,0 +1,35 @@
+services:
+  backend:
+    build: ./backend
+    container_name: ticket-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=sqlite:///./tickets.db
+      - SECRET_KEY=change-this-in-production-super-secret
+      - ACCESS_TOKEN_EXPIRE_MINUTES=60
+    volumes:
+      - sqlite-data:/app
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health')\""]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_URL: http://localhost:8000
+    container_name: ticket-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  sqlite-data:
