@@ -1,76 +1,11 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useAuth } from '../context/AuthContext'
 import api from '../api/axios'
-
-const STATUSES = ['Aberto', 'Em andamento', 'Finalizado']
-const STATUS_CLASS = { 'Aberto': 'status-open', 'Em andamento': 'status-progress', 'Finalizado': 'status-done' }
-
-function TicketCard({ ticket, onStatusChange, onDelete }) {
-  const [updating, setUpdating] = useState(false)
-  const { user } = useAuth()
-
-  const changeStatus = async (newStatus) => {
-    setUpdating(true)
-    try {
-      await api.patch(`/tickets/${ticket.id}/status`, { status: newStatus })
-      onStatusChange(ticket.id, newStatus)
-    } catch (err) {
-      alert(err.response?.data?.detail || 'Erro ao atualizar status.')
-    } finally {
-      setUpdating(false)
-    }
-  }
-
-  const handleDelete = async () => {
-    if (!confirm(`Excluir o ticket "${ticket.title}"?`)) return
-    try {
-      await api.delete(`/tickets/${ticket.id}`)
-      onDelete(ticket.id)
-    } catch (err) {
-      alert(err.response?.data?.detail || 'Erro ao excluir ticket.')
-    }
-  }
-
-  const fmt = (d) => new Date(d).toLocaleString('pt-BR', {
-    day: '2-digit', month: '2-digit', year: 'numeric',
-    hour: '2-digit', minute: '2-digit'
-  })
-
-  return (
-    <div className={`ticket-card ${STATUS_CLASS[ticket.status]}`}>
-      <div className="ticket-header">
-        <span className="ticket-id">#{ticket.id}</span>
-        <span className={`status-badge ${STATUS_CLASS[ticket.status]}`}>{ticket.status}</span>
-      </div>
-
-      <h3 className="ticket-title">{ticket.title}</h3>
-      <p className="ticket-desc">{ticket.description}</p>
-
-      <div className="ticket-meta">
-        <span>🧑 {ticket.owner?.name || 'Usuário'}</span>
-        <span>🕐 {fmt(ticket.created_at)}</span>
-      </div>
-
-      <div className="ticket-actions">
-        <div className="status-select-wrap">
-          <select
-            value={ticket.status}
-            onChange={(e) => changeStatus(e.target.value)}
-            disabled={updating}
-            className="status-select"
-          >
-            {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
-          </select>
-          {updating && <span className="spinner small" />}
-        </div>
-        {user?.id === ticket.owner_id && (
-          <button className="btn-delete" onClick={handleDelete} title="Excluir ticket">✕</button>
-        )}
-      </div>
-    </div>
-  )
-}
+import AppShell from '../components/layout/AppShell'
+import StatsRow from '../components/tickets/StatsRow'
+import TicketCard from '../components/tickets/TicketCard'
+import TicketSkeleton from '../components/tickets/TicketSkeleton'
+import { InboxIcon, PlusIcon, RefreshIcon, SearchIcon } from '../components/icons/Icons'
 
 export default function Dashboard() {
   const [tickets, setTickets] = useState([])
@@ -78,7 +13,6 @@ export default function Dashboard() {
   const [error, setError] = useState('')
   const [filter, setFilter] = useState('all')
   const [search, setSearch] = useState('')
-  const { user, logout } = useAuth()
   const navigate = useNavigate()
 
   const fetchTickets = useCallback(async () => {
@@ -87,8 +21,8 @@ export default function Dashboard() {
     try {
       const { data } = await api.get('/tickets/')
       setTickets(data)
-    } catch (err) {
-      setError('Não foi possível carregar os tickets.')
+    } catch {
+      setError('Não foi possível carregar os chamados.')
     } finally {
       setLoading(false)
     }
@@ -97,14 +31,14 @@ export default function Dashboard() {
   useEffect(() => { fetchTickets() }, [fetchTickets])
 
   const handleStatusChange = (id, newStatus) => {
-    setTickets(prev => prev.map(t => t.id === id ? { ...t, status: newStatus } : t))
+    setTickets((prev) => prev.map((t) => (t.id === id ? { ...t, status: newStatus } : t)))
   }
 
   const handleDelete = (id) => {
-    setTickets(prev => prev.filter(t => t.id !== id))
+    setTickets((prev) => prev.filter((t) => t.id !== id))
   }
 
-  const filtered = tickets.filter(t => {
+  const filtered = tickets.filter((t) => {
     const matchStatus = filter === 'all' || t.status === filter
     const matchSearch = !search || t.title.toLowerCase().includes(search.toLowerCase())
     return matchStatus && matchSearch
@@ -112,93 +46,87 @@ export default function Dashboard() {
 
   const counts = {
     all: tickets.length,
-    'Aberto': tickets.filter(t => t.status === 'Aberto').length,
-    'Em andamento': tickets.filter(t => t.status === 'Em andamento').length,
-    'Finalizado': tickets.filter(t => t.status === 'Finalizado').length,
+    Aberto: tickets.filter((t) => t.status === 'Aberto').length,
+    'Em andamento': tickets.filter((t) => t.status === 'Em andamento').length,
+    Finalizado: tickets.filter((t) => t.status === 'Finalizado').length,
   }
 
   return (
-    <div className="dashboard">
-      <header className="app-header">
-        <div className="header-left">
-          <span className="brand-icon">⬡</span>
-          <span className="brand-name">TicketOS</span>
-        </div>
-        <div className="header-right">
-          <span className="user-greeting">Olá, {user?.name?.split(' ')[0]}</span>
-          <button className="btn-new" onClick={() => navigate('/new')}>+ Novo Chamado</button>
-          <button className="btn-logout" onClick={logout}>Sair</button>
-        </div>
-      </header>
+    <AppShell
+      title="Chamados"
+      subtitle={`${tickets.length} ticket${tickets.length !== 1 ? 's' : ''} no sistema`}
+    >
+      <StatsRow counts={counts} activeFilter={filter} onFilter={setFilter} />
 
-      <main className="dashboard-main">
-        <div className="stats-row">
-          {[
-            { label: 'Total', key: 'all', icon: '📋' },
-            { label: 'Abertos', key: 'Aberto', icon: '🔴' },
-            { label: 'Em Andamento', key: 'Em andamento', icon: '🟡' },
-            { label: 'Finalizados', key: 'Finalizado', icon: '🟢' },
-          ].map(({ label, key, icon }) => (
-            <div
-              key={key}
-              className={`stat-card ${filter === key ? 'active' : ''}`}
-              onClick={() => setFilter(key)}
-            >
-              <span className="stat-icon">{icon}</span>
-              <span className="stat-num">{counts[key]}</span>
-              <span className="stat-label">{label}</span>
-            </div>
-          ))}
-        </div>
-
-        <div className="toolbar">
+      <div className="toolbar">
+        <div className="search">
+          <SearchIcon size={16} className="search__icon" />
           <input
-            className="search-input"
-            type="text"
+            className="search__input"
+            type="search"
             placeholder="Buscar por título..."
             value={search}
-            onChange={e => setSearch(e.target.value)}
+            onChange={(e) => setSearch(e.target.value)}
           />
-          <button className="btn-refresh" onClick={fetchTickets} title="Atualizar">↻</button>
         </div>
+        <button type="button" className="btn btn--ghost btn--icon" onClick={fetchTickets} title="Atualizar lista">
+          <RefreshIcon size={16} />
+        </button>
+      </div>
 
-        {loading && (
-          <div className="loading-state">
-            <div className="loader" />
-            <p>Carregando tickets...</p>
-          </div>
-        )}
+      {loading && (
+        <div className="ticket-grid">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <TicketSkeleton key={i} />
+          ))}
+        </div>
+      )}
 
-        {!loading && error && (
-          <div className="error-state">
-            <p>{error}</p>
-            <button onClick={fetchTickets} className="btn-secondary">Tentar novamente</button>
-          </div>
-        )}
+      {!loading && error && (
+        <div className="empty">
+          <p>{error}</p>
+          <button type="button" className="btn btn--secondary" onClick={fetchTickets}>
+            Tentar novamente
+          </button>
+        </div>
+      )}
 
-        {!loading && !error && filtered.length === 0 && (
-          <div className="empty-state">
-            <span className="empty-icon">🎯</span>
-            <p>{search || filter !== 'all' ? 'Nenhum ticket encontrado para esse filtro.' : 'Nenhum chamado aberto ainda.'}</p>
-            {filter === 'all' && !search && (
-              <button className="btn-primary" onClick={() => navigate('/new')}>Abrir primeiro chamado</button>
-            )}
+      {!loading && !error && filtered.length === 0 && (
+        <div className="empty">
+          <div className="empty__icon">
+            <InboxIcon />
           </div>
-        )}
+          <h3>
+            {search || filter !== 'all'
+              ? 'Nenhum chamado encontrado'
+              : 'Nenhum chamado aberto ainda'}
+          </h3>
+          <p>
+            {search || filter !== 'all'
+              ? 'Ajuste os filtros ou a busca para ver outros resultados.'
+              : 'Crie o primeiro ticket para começar o acompanhamento.'}
+          </p>
+          {filter === 'all' && !search && (
+            <button type="button" className="btn btn--primary" onClick={() => navigate('/new')}>
+              <PlusIcon size={16} />
+              Abrir primeiro chamado
+            </button>
+          )}
+        </div>
+      )}
 
-        {!loading && !error && filtered.length > 0 && (
-          <div className="ticket-grid">
-            {filtered.map(t => (
-              <TicketCard
-                key={t.id}
-                ticket={t}
-                onStatusChange={handleStatusChange}
-                onDelete={handleDelete}
-              />
-            ))}
-          </div>
-        )}
-      </main>
-    </div>
+      {!loading && !error && filtered.length > 0 && (
+        <div className="ticket-grid">
+          {filtered.map((t) => (
+            <TicketCard
+              key={t.id}
+              ticket={t}
+              onStatusChange={handleStatusChange}
+              onDelete={handleDelete}
+            />
+          ))}
+        </div>
+      )}
+    </AppShell>
   )
 }

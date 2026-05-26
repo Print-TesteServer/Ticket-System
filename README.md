@@ -37,70 +37,109 @@ ticket-system/
 │   └── Dockerfile
 ├── frontend/
 │   ├── src/
-│   │   ├── api/axios.js     # Instância Axios + interceptors
-│   │   ├── context/         # AuthContext (estado global)
-│   │   ├── pages/
-│   │   │   ├── Login.jsx    # Login + Cadastro
-│   │   │   ├── Dashboard.jsx  # Lista de tickets + filtros
-│   │   │   └── CreateTicket.jsx  # Formulário de abertura
-│   │   ├── styles.css       # Design system completo
-│   │   └── App.jsx          # Roteamento + rotas protegidas
+│   │   ├── api/axios.js
+│   │   ├── components/      # UI reutilizável (layout, tickets, ícones)
+│   │   ├── context/         # Auth + Toast
+│   │   ├── lib/             # Constantes e helpers
+│   │   ├── pages/           # Login, Dashboard, CreateTicket
+│   │   ├── styles.css
+│   │   └── App.jsx
 │   ├── Dockerfile
 │   └── nginx.conf
-└── docker-compose.yml
+├── docker-compose.yml
+├── start.ps1              # Docker (Windows)
+├── start.sh               # Docker (Linux/Mac)
+└── start-local.ps1        # Instruções para dev local
 ```
+
+---
+
+## Portas do projeto
+
+| Serviço | Docker (host) | Local (sem Docker) |
+|---------|---------------|-------------------|
+| **Frontend (React)** | **80** → `http://localhost/login` | **5173** → `http://localhost:5173/login` |
+| **Backend (API)** | **8000** → `http://localhost:8000/docs` | **8000** → `http://localhost:8000/docs` |
+
+Ao iniciar (Docker, `uvicorn` ou `npm run dev`), o terminal exibe essas URLs automaticamente.
 
 ---
 
 ## Execução Rápida (Docker)
 
-> Pré-requisito: Docker e Docker Compose instalados.
+> Pré-requisito: Docker e Docker Compose instalados.  
+> Execute sempre na **pasta raiz** (onde está o `docker-compose.yml`).
 
 ```bash
-git clone https://github.com/seu-usuario/ticket-system.git
+git clone https://github.com/Print-TesteServer/Ticket-System.git
 cd ticket-system
 
+```bash
+docker compose down
 docker compose up --build
 ```
 
-- **Frontend:** http://localhost
-- **Backend API:** http://localhost:8000
-- **Docs interativa:** http://localhost:8000/docs
+### URLs (Docker)
+
+| Tela | URL |
+|------|-----|
+| **Login** | **http://localhost/login** |
+| Chamados | http://localhost/ |
+| Novo chamado | http://localhost/new |
+| API / Swagger | http://localhost:8000/docs |
+
+### Sem Node.js instalado
+
+Se `npm` não for reconhecido no terminal, use **apenas Docker**. O build do frontend roda dentro do container.
+
+### Docker Desktop ainda mostra `3000:80`?
+
+Os containers antigos mantêm o mapeamento anterior. Na raiz do projeto:
+
+```bash
+docker compose down
+docker compose up --build
+```
+
+Confira em **Containers** → `ticket-frontend` deve aparecer **`80:80`**, não `3000:80`.
 
 ---
 
 ## Execução Local (sem Docker)
 
-### Backend
+Use **dois terminais**. O script `.\start-local.ps1` (Windows) lista os comandos e URLs.
+
+### Terminal 1 — Backend
 
 ```bash
 cd backend
-
-# Criar e ativar ambiente virtual
 python -m venv venv
 source venv/bin/activate        # Linux/Mac
 # venv\Scripts\activate         # Windows
-
-# Instalar dependências
 pip install -r requirements.txt
-
-# Rodar o servidor
 uvicorn app.main:app --reload --port 8000
 ```
 
-A API estará disponível em `http://localhost:8000`.  
-Documentação interativa em `http://localhost:8000/docs`.
+O terminal exibirá: `http://localhost:8000/docs` e `http://localhost:5173/login`.
 
-### Frontend
+### Terminal 2 — Frontend
 
 ```bash
 cd frontend
-
 npm install
 npm run dev
 ```
 
-O frontend estará disponível em `http://localhost:5173`.
+O terminal exibirá: `http://localhost:5173/login` (interface) e lembrete da API na porta 8000.
+
+### URLs (local)
+
+| Tela | URL |
+|------|-----|
+| **Login** | **http://localhost:5173/login** |
+| Chamados | http://localhost:5173/ |
+| Novo chamado | http://localhost:5173/new |
+| API / Swagger | http://localhost:8000/docs |
 
 ---
 
@@ -171,9 +210,33 @@ ACCESS_TOKEN_EXPIRE_MINUTES=60
 - Filtro por status e busca por título
 - Cards de estatísticas clicáveis (filtro rápido)
 - Controle de permissão — só o dono pode excluir o ticket
-- Tratamento de erros em todas as operações
+- Tratamento de erros em todas as operações (API + toasts/modais no frontend)
+- Interface com sidebar, layout em duas colunas no login e feedback visual moderno
 - Design responsivo (mobile-friendly)
 - Documentação automática via Swagger UI (`/docs`)
+
+---
+
+## Atendimento aos requisitos do teste
+
+| Requisito | Status |
+|-----------|--------|
+| Backend Python (FastAPI) | ✅ |
+| Criar ticket | ✅ `POST /tickets/` |
+| Listar tickets | ✅ `GET /tickets/` |
+| Atualizar status (Aberto / Em andamento / Finalizado) | ✅ `PATCH /tickets/{id}/status` |
+| SQLite | ✅ (padrão; PostgreSQL via `DATABASE_URL`) |
+| Código organizado e legível | ✅ |
+| Frontend React | ✅ |
+| Tela abrir ticket (título + descrição) | ✅ `/new` |
+| Tela listar tickets | ✅ `/` |
+| Alterar status na UI | ✅ botões por status em cada card |
+| **Diferencial:** autenticação | ✅ JWT |
+| **Diferencial:** Docker | ✅ `docker-compose.yml` |
+| **Diferencial:** testes | ✅ 14 testes Pytest |
+| **Diferencial:** tratamento de erros | ✅ HTTP exceptions + toasts |
+| **Diferencial:** organização | ✅ pastas `backend/app`, `frontend/src/components` |
+| README com instruções | ✅ |
 
 ---
 
@@ -214,9 +277,11 @@ args:
 
 ### Porta 80 já em uso
 
-Troque a porta do frontend no `docker-compose.yml`:
+Troque o mapeamento do frontend no `docker-compose.yml`:
 
 ```yaml
 ports:
-  - "3000:80"   # acesse em http://localhost:3000
+  - "8080:80"   # acesse em http://localhost:8080/login
 ```
+
+Depois rode `docker compose up --build` novamente na **raiz** do projeto.

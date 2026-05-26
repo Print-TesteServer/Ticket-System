@@ -1,0 +1,11 @@
+#!/bin/sh
+printf '\n'
+printf '  ========================================================\n'
+printf '   TicketOS — Interface (Docker, porta 80)\n'
+printf '  ========================================================\n'
+printf '   Login:     http://localhost/login\n'
+printf '   Chamados:  http://localhost/\n'
+printf '   Novo:      http://localhost/new\n'
+printf '   API Docs:  http://localhost:8000/docs\n'
+printf '  ========================================================\n\n'
+exec nginx -g 'daemon off;'

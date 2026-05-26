@@ -1,3 +1,10 @@
+# Portas expostas no host:
+#   - Frontend (React):  80  → http://localhost/login
+#   - Backend (API):     8000 → http://localhost:8000/docs
+#
+# Se o Docker Desktop ainda mostrar 3000:80, recrie os containers:
+#   docker compose down && docker compose up --build
+
 services:
   backend:
     build: ./backend
