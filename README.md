@@ -2,6 +2,17 @@
 
 Sistema full stack para abertura e gestão de tickets/chamados, desenvolvido com **FastAPI + React**.
 
+[![CI](https://github.com/Print-TesteServer/Ticket-System/actions/workflows/ci.yml/badge.svg)](https://github.com/Print-TesteServer/Ticket-System/actions/workflows/ci.yml)
+[![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.111-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
+[![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=black)](https://react.dev/)
+[![SQLite](https://img.shields.io/badge/SQLite-DB-003B57?logo=sqlite&logoColor=white)](https://www.sqlite.org/)
+[![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
+[![Pytest](https://img.shields.io/badge/Pytest-8.2-0A9EDC?logo=pytest&logoColor=white)](https://pytest.org/)
+[![JWT](https://img.shields.io/badge/Auth-JWT-black)](https://jwt.io/)
+
+**Tags:** `fastapi` · `react` · `vite` · `sqlalchemy` · `sqlite` · `jwt` · `docker` · `docker-compose` · `pytest` · `fullstack` · `tickets` · `helpdesk`
+
 ---
 
 ## Stack
@@ -74,10 +85,11 @@ Ao iniciar (Docker, `uvicorn` ou `npm run dev`), o terminal exibe essas URLs aut
 git clone https://github.com/Print-TesteServer/Ticket-System.git
 cd ticket-system
 
-```bash
 docker compose down
 docker compose up --build
 ```
+
+**Windows (PowerShell):** `.\start.ps1` · **Linux/Mac:** `./start.sh`
 
 ### URLs (Docker)
 
@@ -145,14 +157,61 @@ O terminal exibirá: `http://localhost:5173/login` (interface) e lembrete da API
 
 ## Testes
 
+Os testes ficam em `backend/tests/test_main.py` (14 casos com **Pytest** + **TestClient**).
+
+### Local (sem Docker)
+
 ```bash
 cd backend
 
-# Com virtualenv ativado:
+# 1. Ambiente virtual (recomendado)
+python -m venv venv
+source venv/bin/activate        # Linux/Mac
+# venv\Scripts\activate         # Windows
+
+# 2. Dependências (inclui pytest)
+pip install -r requirements.txt
+
+# 3. Executar
 pytest tests/ -v
 ```
 
-Cobertura dos testes (14 casos):
+**Windows (PowerShell), em uma linha:**
+
+```powershell
+cd backend; .\venv\Scripts\activate; pip install -r requirements.txt; pytest tests/ -v
+```
+
+### Com Docker
+
+Na **raiz** do projeto (não precisa ativar venv local):
+
+```bash
+# Container temporário — recomendado
+docker compose run --rm backend pytest tests/ -v
+```
+
+Se os containers já estiverem rodando:
+
+```bash
+docker exec -it ticket-backend pytest tests/ -v
+```
+
+> **Dica:** se `pytest` não for reconhecido localmente, instale as dependências com `pip install -r requirements.txt` ou use o comando via Docker acima.
+
+### CI/CD (GitHub Actions)
+
+A cada `push` ou `pull_request` nas branches `main` / `master`, o workflow [`.github/workflows/ci.yml`](.github/workflows/ci.yml) executa automaticamente:
+
+| Job | O que valida |
+|-----|----------------|
+| **Backend — Pytest** | 14 testes em `backend/tests/` |
+| **Frontend — Build** | `npm ci` + `npm run build` (garante que o React compila) |
+
+Veja o status em **Actions** no GitHub ou no badge **CI** acima.
+
+### Cobertura dos testes (14 casos)
+
 - Registro de usuário (sucesso + e-mail duplicado)
 - Login (sucesso + senha errada + usuário inexistente)
 - Criar ticket (autenticado + sem auth)
